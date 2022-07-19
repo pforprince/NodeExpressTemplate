@@ -1,6 +1,7 @@
 const { model } = require("mongoose");
-const { User } = require("../models/User");
+const { User, Bank } = require("../models/User");
 const { handleAsync } = require("../shared/handleAsync");
+const { generateToken } = require("../shared/TokenService");
 const client = require("twilio")(
   process.env.accountSid,
   process.env.authToken,
@@ -38,15 +39,12 @@ const loginUser = handleAsync(async (req, res) => {
   }
   if (user) {
     if (user && (await user.comparePassword(password))) {
-      //   const token = await generateToken(email);
+      const token = await generateToken(email);
       user = user.toObject();
       delete user.password;
-      // delete user.updatedAt;
-      // delete user.__v;
-      // delete user._id;
-      // delete user.createdAt;
-
-      return res.status(200).json({ message: "Success", data: user });
+      return res
+        .status(200)
+        .json({ message: "Success", data: { user, token } });
     }
   } else
     return res.status(403).json({ message: "Invalid Credentials", data: [] });
@@ -74,6 +72,7 @@ const enableUser = handleAsync(async (req, res) => {
       return res.status(200).json({ message: "Success", data: [] });
   } else return res.status(400).json({ message: "Invalid user id", data: [] });
 });
+
 const disableUser = handleAsync(async (req, res) => {
   const { userId } = req.body;
   const user = await User.findById(userId);
@@ -91,6 +90,67 @@ const getAllUsers = handleAsync(async (req, res) => {
     return res.status(200).json({ message: "Success", data: users });
   } else return res.status(400).json({ message: "Invalid Request", data: [] });
 });
+
+const enableForP2P = handleAsync(async (req, res) => {
+  const { userId } = req.body;
+  const user = await User.findById(userId);
+  if (user) {
+    user.isP2P = true;
+    const updatedUser = await user.save();
+    if (updatedUser)
+      return res.status(200).json({ message: "Success", data: [] });
+  } else return res.status(400).json({ message: "Invalid user id", data: [] });
+});
+
+const disableForP2P = handleAsync(async (req, res) => {
+  const { userId } = req.body;
+  var user = await User.findById(userId);
+  if (user) {
+    user.isP2P = false;
+    delete user.bank;
+    const updatedUser = await user.save();
+    if (updatedUser)
+      return res.status(200).json({ message: "Success", data: [] });
+  } else return res.status(400).json({ message: "Invalid user id", data: [] });
+});
+
+const getAllP2PRequests = handleAsync(async (req, res) => {
+  const users = await User.find({
+    bankDetails: { $exists: true },
+  });
+  if (users) return res.status(200).json({ message: "Success", data: users });
+  else return res.status(400).json({ message: "Invalid Request", data: [] });
+});
+
+const registerForP2P = handleAsync(async (req, res) => {
+  const { accountHolderName, bankName, ifsc, accountNumber, upiId } = req.body;
+
+  if (!accountHolderName || !bankName || !ifsc || !accountNumber || !upiId) {
+    return res
+      .status(400)
+      .json({ message: "All fields are required", data: [] });
+  }
+
+  const bankDetails = new Bank({
+    accountHolderName,
+    bankName,
+    ifsc,
+    accountNumber,
+    upiId,
+  });
+
+  const savedBankDetails = await bankDetails.save();
+  if (savedBankDetails) {
+    const user = req.user;
+    user.bankDetails = savedBankDetails;
+    const updateUser = await user.save();
+    if (updateUser)
+      return res.status(200).json({ message: "Success", data: [] });
+  }
+  return res.status(400).json({ message: "Invalid Request", data: [] });
+});
+// const loginUser= handleAsync(async (req, res)=>{})
+// const loginUser= handleAsync(async (req, res)=>{})
 // const loginUser= handleAsync(async (req, res)=>{})
 
 module.exports = {
@@ -101,4 +161,8 @@ module.exports = {
   getAllUsers,
   loginUser,
   sendOTP,
+  registerForP2P,
+  getAllP2PRequests,
+  disableForP2P,
+  enableForP2P,
 };

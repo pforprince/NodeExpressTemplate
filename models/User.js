@@ -1,6 +1,34 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
+const bankSchema = mongoose.Schema(
+  {
+    bankName: {
+      type: String,
+      required: true,
+    },
+    ifsc: {
+      type: String,
+      required: true,
+    },
+    accountNumber: {
+      type: String,
+      required: true,
+    },
+    accountHolderName: {
+      type: String,
+      required: true,
+    },
+    upiId: {
+      type: String,
+      required: true,
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
 const userSchema = mongoose.Schema(
   {
     name: {
@@ -35,6 +63,15 @@ const userSchema = mongoose.Schema(
       enum: ["active", "inactive"],
       required: true,
     },
+    isP2P: {
+      type: Boolean,
+      default: false,
+      required: true,
+    },
+    bankDetails: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "bank",
+    },
   },
   {
     timestamps: true,
@@ -53,4 +90,5 @@ userSchema.methods.comparePassword = async function (rawPassword) {
 };
 
 const User = mongoose.model("User", userSchema);
-module.exports = { User };
+const Bank = mongoose.model("Bank", bankSchema);
+module.exports = { User, Bank };
