@@ -30,7 +30,7 @@ const loginUser = handleAsync(async (req, res) => {
   const { email, password } = req.body;
 
   var user = await User.findOne({ email }).select(
-    "+password -__v -createdAt -updatedAt -_id"
+    "+password -__v -createdAt -updatedAt -_id -bankDetails -phoneNo -isP2P -status"
   );
   if (user && user.status === "inactive") {
     return res
