@@ -38,12 +38,21 @@ const userSchema = mongoose.Schema(
     email: {
       type: String,
       required: true,
+      lowercase: true,
     },
     password: {
       type: String,
       required: true,
     },
     phoneNo: {
+      type: String,
+      required: true,
+    },
+    walletAddress: {
+      type: String,
+      required: true,
+    },
+    privateKey: {
       type: String,
       required: true,
     },

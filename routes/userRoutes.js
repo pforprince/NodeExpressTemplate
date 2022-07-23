@@ -9,6 +9,7 @@ const {
   getAllP2PRequests,
   disableForP2P,
   enableForP2P,
+  updateUser,
 } = require("../controllers/userController");
 
 const router = require("express").Router();
@@ -26,5 +27,6 @@ router.put("/bank-details", registerForP2P);
 router.get("/all/p2p", getAllP2PRequests);
 router.put("/disable/p2p", disableForP2P);
 router.put("/enable/p2p", enableForP2P);
+router.put("/update", updateUser);
 
 module.exports = router;
