@@ -1,7 +1,11 @@
+const { default: axios } = require("axios");
 const { model } = require("mongoose");
 const { User, Bank } = require("../models/User");
+const { writeNewToken } = require("../shared/common");
 const { handleAsync } = require("../shared/handleAsync");
 const { generateToken } = require("../shared/TokenService");
+const { BASEURL, BEARER_TOKEN } = require("../shared/Utils");
+
 const client = require("twilio")(
   process.env.accountSid,
   process.env.authToken,
@@ -153,6 +157,7 @@ const registerForP2P = handleAsync(async (req, res) => {
   }
   return res.status(400).json({ message: "Invalid Request", data: [] });
 });
+
 const updateUser = handleAsync(async (req, res) => {
   const { email, walletAddress, privateKey } = req.body;
 
@@ -174,6 +179,96 @@ const updateUser = handleAsync(async (req, res) => {
 
   return res.status(400).json({ message: "Invalid Request", data: [] });
 });
+
+const getVerificationToken = async () => {
+  var formData = new URLSearchParams();
+  formData.append("client_id", process.env.CLIENT_ID);
+  formData.append("client_secret", process.env.CLIENT_SECRET);
+  axios
+    .post(`${BASEURL}/authorize`, formData)
+    .then((response) => {
+      writeNewToken(response.data.access_token);
+    })
+    .catch((e) => {
+      console.log(e);
+    });
+};
+
+const verifyUPIId = handleAsync(async (req, res) => {
+  const { upiId } = req.body;
+  axios
+    .get(`${BASEURL}/verification/upi?vpa=${upiId}`, {
+      headers: {
+        Authorization: "Bearer " + BEARER_TOKEN,
+        "x-api-key": process.env.CLIENT_SECRET,
+      },
+    })
+    .then((response) => {
+      return res.status(200).json({
+        message: "Success",
+        data: { name: response.data.data.name_at_bank },
+      });
+    })
+    .catch(async (e) => {
+      if (e.response.status == 403) await getVerificationToken();
+      return res.status(400).json({
+        message: "Something went wrong. Try again in sometime",
+        data: [],
+      });
+    });
+});
+
+const verifyPAN = handleAsync(async (req, res) => {
+  const { panNumber } = req.body;
+  axios
+    .get(`${BASEURL}/verification/panbasic?pan_number=${panNumber}`, {
+      headers: {
+        Authorization: "Bearer " + BEARER_TOKEN,
+        "x-api-key": process.env.CLIENT_SECRET,
+      },
+    })
+    .then((response) => {
+      return res.status(200).json({
+        message: "Success",
+        data: { name: response.data.data.full_name },
+      });
+    })
+    .catch(async (e) => {
+      if (e.response.status == 403) await getVerificationToken();
+      return res.status(400).json({
+        message: "Something went wrong. Try again in sometime",
+        data: [],
+      });
+    });
+});
+
+const verifyBank = handleAsync(async (req, res) => {
+  const { accountNumber, ifsc } = req.body;
+  axios
+    .get(
+      `${BASEURL}/verification/bankaccount?account_number=${accountNumber}&ifsc=${ifsc}`,
+      {
+        headers: {
+          Authorization: "Bearer " + BEARER_TOKEN,
+          "x-api-key": process.env.CLIENT_SECRET,
+        },
+      }
+    )
+    .then((response) => {
+      return res.status(200).json({
+        message: "Success",
+        data: { name: response.data.data.name_at_bank },
+      });
+    })
+    .catch(async (e) => {
+      if (e.response.status == 403) await getVerificationToken();
+      return res.status(400).json({
+        message: "Something went wrong. Try again in sometime",
+        data: [],
+      });
+    });
+});
+
 // const loginUser= handleAsync(async (req, res)=>{})
 // const loginUser= handleAsync(async (req, res)=>{})
 
@@ -184,7 +279,11 @@ module.exports = {
   updateUser,
   registerUser,
   loginUser,
+  verifyBank,
+  getVerificationToken,
   sendOTP,
+  verifyUPIId,
+  verifyPAN,
   registerForP2P,
   getAllP2PRequests,
   disableForP2P,

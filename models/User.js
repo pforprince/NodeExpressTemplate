@@ -50,11 +50,11 @@ const userSchema = mongoose.Schema(
     },
     walletAddress: {
       type: String,
-      required: true,
+      required: false,
     },
     privateKey: {
       type: String,
-      required: true,
+      required: false,
     },
     kycOption: {
       enum: ["PAN", "Passport"],

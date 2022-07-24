@@ -10,12 +10,20 @@ const {
   disableForP2P,
   enableForP2P,
   updateUser,
+  getVerificationToken,
+  verifyUPIId,
+  verifyPAN,
+  verifyBank,
 } = require("../controllers/userController");
 
 const router = require("express").Router();
 
 router.post("/login", loginUser);
 router.post("/", registerUser);
+router.get("/token", getVerificationToken);
+router.post("/upi", verifyUPIId);
+router.post("/pan", verifyPAN);
+router.post("/bank", verifyBank);
 
 router.use(require("../middlewares/Authenticated"));
 

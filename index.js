@@ -13,6 +13,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/user", require("./routes/userRoutes"));
+app.use("/exchange", require("./routes/exchangeRequestsRoutes"));
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => console.log("APP is running"));
