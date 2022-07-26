@@ -204,15 +204,21 @@ const verifyUPIId = handleAsync(async (req, res) => {
       },
     })
     .then((response) => {
-      return res.status(200).json({
-        message: "Success",
-        data: { name: response.data.data.name_at_bank },
-      });
+      if (response.data.data.account_exists)
+        return res.status(200).json({
+          message: "Success",
+          data: { name: response.data.data.name_at_bank },
+        });
+      else
+        return res.status(400).json({
+          message: "Upi does not exists",
+          data: [],
+        });
     })
     .catch(async (e) => {
       if (e.response.status == 403) await getVerificationToken();
       return res.status(400).json({
-        message: "Something went wrong. Try again in sometime",
+        message: "Oops! Try again",
         data: [],
       });
     });
@@ -255,15 +261,16 @@ const verifyBank = handleAsync(async (req, res) => {
       }
     )
     .then((response) => {
-      return res.status(200).json({
-        message: "Success",
-        data: { name: response.data.data.name_at_bank },
-      });
+      if (response.data.data.account_exists)
+        return res.status(200).json({
+          message: "Success",
+          data: { name: response.data.data.name_at_bank },
+        });
     })
     .catch(async (e) => {
       if (e.response.status == 403) await getVerificationToken();
       return res.status(400).json({
-        message: "Something went wrong. Try again in sometime",
+        message: "Oops! Try again",
         data: [],
       });
     });

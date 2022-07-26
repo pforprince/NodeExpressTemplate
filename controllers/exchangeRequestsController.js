@@ -2,7 +2,7 @@ const { ExchangeRequests } = require("../models/ExchangeRequests");
 const { handleAsync } = require("../shared/handleAsync");
 
 const addExchangeRequest = handleAsync(async (req, res) => {
-  const { rate, currency, paymentMethod } = req.body;
+  const { rate, currency, paymentMethod, minAmount, maxAmount } = req.body;
 
   if (!rate || !currency || !paymentMethod) {
     return res
@@ -14,6 +14,8 @@ const addExchangeRequest = handleAsync(async (req, res) => {
     userId: req.user._id,
     rate,
     currency,
+    minAmount,
+    maxAmount,
     paymentMethod,
     startTime: Date.now(),
     endTime: Date.now() + 2 * 60 * 60 * 1000,

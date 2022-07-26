@@ -27,6 +27,14 @@ const exchangeRequests = mongoose.Schema(
       type: Date,
       required: true,
     },
+    minAmount: {
+      type: Number,
+      required: true,
+    },
+    maxAmount: {
+      type: Number,
+      required: true,
+    },
     endTime: {
       type: Date,
       required: true,
