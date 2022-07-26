@@ -19,6 +19,12 @@ const exchangeRequests = mongoose.Schema(
       required: true,
       lowercase: true,
     },
+    action: {
+      type: String,
+      enum: ["buy", "sell"],
+      required: true,
+      lowercase: true,
+    },
     rate: {
       type: Number,
       required: true,

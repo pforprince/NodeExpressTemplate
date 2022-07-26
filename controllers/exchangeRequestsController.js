@@ -2,9 +2,17 @@ const { ExchangeRequests } = require("../models/ExchangeRequests");
 const { handleAsync } = require("../shared/handleAsync");
 
 const addExchangeRequest = handleAsync(async (req, res) => {
-  const { rate, currency, paymentMethod, minAmount, maxAmount } = req.body;
+  const { rate, currency, paymentMethod, minAmount, maxAmount, action } =
+    req.body;
 
-  if (!rate || !currency || !paymentMethod) {
+  if (
+    !rate ||
+    !currency ||
+    !paymentMethod ||
+    !action ||
+    !minAmount ||
+    !maxAmount
+  ) {
     return res
       .status(400)
       .json({ message: "All fields are required", data: [] });
@@ -16,6 +24,7 @@ const addExchangeRequest = handleAsync(async (req, res) => {
     currency,
     minAmount,
     maxAmount,
+    action,
     paymentMethod,
     startTime: Date.now(),
     endTime: Date.now() + 2 * 60 * 60 * 1000,
@@ -29,10 +38,21 @@ const addExchangeRequest = handleAsync(async (req, res) => {
 });
 
 const getActiveExchangeRequests = handleAsync(async (req, res) => {
-  const requests = await ExchangeRequests.find().populate(
-    "userId",
-    "email name -_id"
-  );
+  const { action, currency } = req.query;
+
+  var query = ExchangeRequests.find();
+
+  if (action) {
+    query = query.find({ action });
+  }
+
+  if (currency) {
+    query = query.find({ currency });
+  }
+
+  const requests = await query
+    .populate("userId", "email name -_id")
+    .sort("-createdAt");
 
   if (requests)
     return res.status(200).json({ message: "Success", data: requests });
