@@ -15,15 +15,16 @@ const {
   verifyPAN,
   verifyBank,
 } = require("../controllers/userController");
+const VerificationMiddleware = require("../middlewares/VerificationMiddleware");
 
 const router = require("express").Router();
 
 router.post("/login", loginUser);
 router.post("/", registerUser);
 router.get("/token", getVerificationToken);
-router.post("/upi", verifyUPIId);
+router.post("/upi", VerificationMiddleware, verifyUPIId);
 router.post("/pan", verifyPAN);
-router.post("/bank", verifyBank);
+router.post("/bank", VerificationMiddleware, verifyBank);
 
 router.use(require("../middlewares/Authenticated"));
 

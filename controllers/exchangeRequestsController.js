@@ -40,7 +40,7 @@ const addExchangeRequest = handleAsync(async (req, res) => {
 const getActiveExchangeRequests = handleAsync(async (req, res) => {
   const { action, currency } = req.query;
 
-  var query = ExchangeRequests.find();
+  var query = ExchangeRequests.find({ userId: { $ne: req.user._id } });
 
   if (action) {
     query = query.find({ action });
@@ -51,12 +51,11 @@ const getActiveExchangeRequests = handleAsync(async (req, res) => {
   }
 
   const requests = await query
-    .populate("userId", "email name -_id")
+    .populate("userId", "email name")
     .sort("-createdAt");
 
   if (requests)
     return res.status(200).json({ message: "Success", data: requests });
-
   return res.status(400).json({ message: "Invalid request", data: [] });
 });
 
@@ -64,3 +63,5 @@ const getActiveExchangeRequests = handleAsync(async (req, res) => {
 // const loginUser= handleAsync(async (req, res)=>{})
 
 module.exports = { getActiveExchangeRequests, addExchangeRequest };
+
+// heroku git:clone exchange-code

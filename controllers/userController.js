@@ -4,7 +4,9 @@ const { User, Bank } = require("../models/User");
 const { writeNewToken } = require("../shared/common");
 const { handleAsync } = require("../shared/handleAsync");
 const { generateToken } = require("../shared/TokenService");
-const { BASEURL, BEARER_TOKEN } = require("../shared/Utils");
+const { BASEURL } = require("../shared/Utils");
+
+var BEARER_TOKEN = "";
 
 const client = require("twilio")(
   process.env.accountSid,
@@ -38,7 +40,7 @@ const loginUser = handleAsync(async (req, res) => {
   var user = await User.findOne({
     email: { $regex: email, $options: "i" },
   }).select(
-    "+password -__v -createdAt -updatedAt -_id -bankDetails -phoneNo -isP2P -status"
+    "+password -__v -createdAt -updatedAt -bankDetails -phoneNo -isP2P -status"
   );
   if (user && user.status === "inactive") {
     return res
@@ -187,19 +189,28 @@ const getVerificationToken = async () => {
   axios
     .post(`${BASEURL}/authorize`, formData)
     .then((response) => {
-      writeNewToken(response.data.access_token);
+      console.log("hhhhhhhhhhhhhhhhhhhhhhhhhh");
+      console.log(response.data.access_token);
+      //  writeNewToken(response.data.access_token);
+      return response.data.access_token;
     })
     .catch((e) => {
       console.log(e);
     });
+  return null;
 };
 
 const verifyUPIId = handleAsync(async (req, res) => {
+  console.log("upiiiiiiiiiiiii", req.session);
+
   const { upiId } = req.body;
+  console.log(req.session);
+  // req.session.token =
+  //   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJsaXZlX2RpZ2l0YWxvbmVib3giLCJleHAiOjE2NTg5NDc2NzB9.gFz2tT66Lguc2sZqEqh-L-KoGv5kV45_F9Ng8h0yAJQ";
   axios
     .get(`${BASEURL}/verification/upi?vpa=${upiId}`, {
       headers: {
-        Authorization: "Bearer " + BEARER_TOKEN,
+        Authorization: "Bearer " + req.session?.token,
         "x-api-key": process.env.CLIENT_SECRET,
       },
     })
@@ -216,7 +227,7 @@ const verifyUPIId = handleAsync(async (req, res) => {
         });
     })
     .catch(async (e) => {
-      if (e.response.status == 403) await getVerificationToken();
+      // if (e.response.status == 403) await getVerificationToken();
       return res.status(400).json({
         message: "Oops! Try again",
         data: [],
@@ -255,7 +266,7 @@ const verifyBank = handleAsync(async (req, res) => {
       `${BASEURL}/verification/bankaccount?account_number=${accountNumber}&ifsc=${ifsc}`,
       {
         headers: {
-          Authorization: "Bearer " + BEARER_TOKEN,
+          Authorization: "Bearer " + req.session.token,
           "x-api-key": process.env.CLIENT_SECRET,
         },
       }
@@ -268,7 +279,6 @@ const verifyBank = handleAsync(async (req, res) => {
         });
     })
     .catch(async (e) => {
-      if (e.response.status == 403) await getVerificationToken();
       return res.status(400).json({
         message: "Oops! Try again",
         data: [],
