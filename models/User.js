@@ -44,6 +44,16 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    referCode: {
+      type: String,
+      required: true,
+      uppercase: true,
+    },
+    referralCode: {
+      type: String,
+      required: false,
+      uppercase: true,
+    },
     phoneNo: {
       type: String,
       required: true,

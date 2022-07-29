@@ -17,7 +17,7 @@ const client = require("twilio")(
 );
 
 const registerUser = handleAsync(async (req, res) => {
-  const { name, email, phoneNo, password, kycOption } = req.body;
+  const { name, email, phoneNo, password, kycOption, referralCode } = req.body;
 
   const isEmailExists = await User.findOne({
     email: { $regex: email, $options: "i" },
@@ -25,7 +25,15 @@ const registerUser = handleAsync(async (req, res) => {
   if (isEmailExists)
     return res.status(400).json({ message: "User already exists", data: [] });
 
-  const user = new User({ name, email, phoneNo, kycOption, password });
+  const user = new User({
+    name,
+    email,
+    phoneNo,
+    kycOption,
+    password,
+    referralCode,
+    referCode: Math.random().toString(36).slice(2, 9),
+  });
   const savedUser = await user.save();
 
   if (savedUser) {
@@ -286,6 +294,14 @@ const verifyBank = handleAsync(async (req, res) => {
     });
 });
 
+const getMyReferrals = handleAsync(async (req, res) => {
+  const users = await User.find({
+    referralCode: req.user.referCode,
+  });
+  if (users) return res.status(200).json({ message: "Success", data: users });
+  else return res.status(400).json({ message: "Invalid Request", data: [] });
+});
+
 // const loginUser= handleAsync(async (req, res)=>{})
 // const loginUser= handleAsync(async (req, res)=>{})
 
@@ -302,6 +318,7 @@ module.exports = {
   verifyUPIId,
   verifyPAN,
   registerForP2P,
+  getMyReferrals,
   getAllP2PRequests,
   disableForP2P,
   enableForP2P,
