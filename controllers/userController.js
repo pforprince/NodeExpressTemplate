@@ -1,12 +1,11 @@
 const { default: axios } = require("axios");
-const { model } = require("mongoose");
 const { User, Bank } = require("../models/User");
-const { writeNewToken } = require("../shared/common");
 const { handleAsync } = require("../shared/handleAsync");
 const { generateToken } = require("../shared/TokenService");
+const { transporter, mailOptions } = require("../shared/Transporter");
 const { BASEURL } = require("../shared/Utils");
-
-var BEARER_TOKEN = "";
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
 const client = require("twilio")(
   process.env.accountSid,
@@ -25,6 +24,12 @@ const registerUser = handleAsync(async (req, res) => {
   if (isEmailExists)
     return res.status(400).json({ message: "User already exists", data: [] });
 
+  const isPhoneExists = await User.findOne({
+    phoneNo: { $regex: phoneNo, $options: "i" },
+  });
+  if (isPhoneExists)
+    return res.status(400).json({ message: "User already exists", data: [] });
+
   const user = new User({
     name,
     email,
@@ -37,19 +42,32 @@ const registerUser = handleAsync(async (req, res) => {
   const savedUser = await user.save();
 
   if (savedUser) {
+    transporter.sendMail(mailOptions({ email }), function (err, data) {
+      if (err) {
+        console.log("Error " + err);
+      }
+    });
     return res.status(200).json({ message: "Success", data: [] });
   }
   return res.status(400).json({ message: "Invalid request", data: [] });
 });
 
 const loginUser = handleAsync(async (req, res) => {
-  const { email, password } = req.body;
-
-  var user = await User.findOne({
-    email: { $regex: email, $options: "i" },
-  }).select(
-    "+password -__v -createdAt -updatedAt -bankDetails -phoneNo -isP2P -status"
-  );
+  const { email, password, phoneNo } = req.body;
+  var user;
+  if (email) {
+    user = await User.findOne({
+      email: { $regex: email, $options: "i" },
+    }).select(
+      "+password -__v -createdAt -updatedAt -bankDetails -phoneNo -isP2P -status"
+    );
+  } else if (phoneNo) {
+    user = await User.findOne({
+      phoneNo: { $regex: phoneNo, $options: "i" },
+    }).select(
+      "+password -__v -createdAt -updatedAt -bankDetails -phoneNo -isP2P -status"
+    );
+  }
   if (user && user.status === "inactive") {
     return res
       .status(403)
@@ -64,8 +82,8 @@ const loginUser = handleAsync(async (req, res) => {
         .status(200)
         .json({ message: "Success", data: { user, token } });
     }
-  } else
-    return res.status(403).json({ message: "Invalid Credentials", data: [] });
+  }
+  return res.status(403).json({ message: "Invalid Credentials", data: [] });
 });
 
 const sendOTP = handleAsync(async (req, res) => {
@@ -248,18 +266,24 @@ const verifyPAN = handleAsync(async (req, res) => {
   axios
     .get(`${BASEURL}/verification/panbasic?pan_number=${panNumber}`, {
       headers: {
-        Authorization: "Bearer " + BEARER_TOKEN,
+        Authorization: "Bearer " + req.session?.token,
         "x-api-key": process.env.CLIENT_SECRET,
       },
     })
     .then((response) => {
-      return res.status(200).json({
-        message: "Success",
-        data: { name: response.data.data.full_name },
-      });
+      if (response.data?.data?.full_name)
+        return res.status(200).json({
+          message: "Success",
+          data: { name: response.data.data.full_name },
+        });
+      else
+        return res.status(400).json({
+          message: "PAN Number not exists",
+          data: [],
+        });
     })
     .catch(async (e) => {
-      if (e.response.status == 403) await getVerificationToken();
+      console.log(e);
       return res.status(400).json({
         message: "Something went wrong. Try again in sometime",
         data: [],
@@ -302,8 +326,63 @@ const getMyReferrals = handleAsync(async (req, res) => {
   else return res.status(400).json({ message: "Invalid Request", data: [] });
 });
 
-// const loginUser= handleAsync(async (req, res)=>{})
-// const loginUser= handleAsync(async (req, res)=>{})
+const sendWelcomeEmail = handleAsync(async (req, res) => {
+  transporter.sendMail(
+    mailOptions({ email: "sswami610@gmail.com" }),
+    function (err, data) {
+      if (err) {
+        console.log("Error " + err);
+        return res.status(404).json({ message: "Not found", data: [] });
+      } else {
+        return res.status(200).json({ message: "Success", data: [] });
+      }
+    }
+  );
+});
+
+const sendPasswordResetEmail = handleAsync(async (req, res) => {
+  console.log("req came for pw reset");
+  const { email } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user)
+    return res.status(404).json({ message: "Invalid email", data: [] });
+  const token = await generateToken(email, "600000");
+  transporter.sendMail(
+    mailOptions({ subject: "Password Reset", email, token, reset: true }),
+    function (err, data) {
+      if (err) {
+        console.log("Error " + err);
+        return res.status(404).json({ message: "Not found", data: [] });
+      } else {
+        return res.status(200).json({ message: "Success", data: [] });
+      }
+    }
+  );
+});
+
+const resetPassword = handleAsync(async (req, res) => {
+  const { newPassword, token } = req.body;
+  const decodedData = jwt.verify(token, process.env.JWTSECRET);
+  console.log(decodedData);
+  const user = await User.findOne({ email: decodedData.email });
+  if (user) {
+    user.password = await bcrypt.hash(newPassword, 10);
+    const updatedUser = await user.save();
+    if (updatedUser)
+      return res.status(200).json({ message: "Success", data: [] });
+  } else {
+    return res.status(400).json({ message: "Invalid request", data: [] });
+  }
+});
+
+const getMyProfile = handleAsync(async (req, res) => {
+  const user = await User.findById(req.user._id).select(
+    "name email phoneNo walletAddress"
+  );
+  if (user) return res.status(200).json({ message: "Success", data: user });
+  else return res.status(400).json({ message: "Invalid Request", data: [] });
+});
 
 module.exports = {
   enableUser,
@@ -313,6 +392,7 @@ module.exports = {
   registerUser,
   loginUser,
   verifyBank,
+  getMyProfile,
   getVerificationToken,
   sendOTP,
   verifyUPIId,
@@ -322,4 +402,7 @@ module.exports = {
   getAllP2PRequests,
   disableForP2P,
   enableForP2P,
+  resetPassword,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
 };

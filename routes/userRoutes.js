@@ -15,6 +15,10 @@ const {
   verifyPAN,
   verifyBank,
   getMyReferrals,
+  sendWelcomeEmail,
+  resetPassword,
+  sendPasswordResetEmail,
+  getMyProfile,
 } = require("../controllers/userController");
 const VerificationMiddleware = require("../middlewares/VerificationMiddleware");
 
@@ -24,9 +28,12 @@ router.post("/login", loginUser);
 router.post("/", registerUser);
 router.get("/token", getVerificationToken);
 router.post("/upi", VerificationMiddleware, verifyUPIId);
-router.post("/pan", verifyPAN);
+router.post("/pan", VerificationMiddleware, verifyPAN);
 router.post("/bank", VerificationMiddleware, verifyBank);
+router.post("/reset", resetPassword);
+router.post("/reset/send", sendPasswordResetEmail);
 
+// router.get("/email", sendWelcomeEmail);
 router.use(require("../middlewares/Authenticated"));
 
 router.get("/otp", sendOTP);
@@ -39,5 +46,6 @@ router.put("/disable/p2p", disableForP2P);
 router.put("/enable/p2p", enableForP2P);
 router.put("/update", updateUser);
 router.get("/refers", getMyReferrals);
+router.get("/profile", getMyProfile);
 
 module.exports = router;
